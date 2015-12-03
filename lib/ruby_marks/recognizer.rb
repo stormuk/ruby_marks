@@ -81,6 +81,13 @@ module RubyMarks
     end
 
 
+    def trimmed_values(values, expected_number)
+      if values.length > expected_number
+        values.shift
+      end
+      values
+    end
+
     def scan
       raise IOError, "There's a invalid or missing file" if @file.nil?
 
@@ -102,7 +109,7 @@ module RubyMarks
         @groups.each_pair do |label, group|
           marks = Hash.new { |hash, key| hash[key] = [] }
           group.marks.each_pair do |line, value|
-            value.each do |mark|
+            trimmed_values(value, group.marks_options.size / 2).each do |mark|
               marks[line] << mark.value if mark.marked? && mark.value
             end
 
