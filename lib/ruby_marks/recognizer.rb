@@ -82,9 +82,10 @@ module RubyMarks
 
 
     def trimmed_values(values, expected_number)
-      if values.length > expected_number
+      if values.size > expected_number
         values.shift
       end
+
       values
     end
 
@@ -107,14 +108,28 @@ module RubyMarks
         end
 
         @groups.each_pair do |label, group|
-          marks = Hash.new { |hash, key| hash[key] = [] }
-          group.marks.each_pair do |line, value|
-            trimmed_values(value, group.marks_options.size / 2).each do |mark|
-              marks[line] << mark.value if mark.marked? && mark.value
+          puts group.label
+          num_expected_values = group.marks_options.size / 2
+
+          marks = Hash.new { |hash, key| hash[key] = {marked:[], mark_count: 0, warning: {}} }
+          group.marks.each_pair do |line, values|
+            marks[line][:mark_count] = values.size
+
+            difference = num_expected_values - marks[line][:mark_count]
+            warning = difference > 0 ? :too_few : (difference < 0 ? :too_many : nil)
+
+            if warning
+              marks[line][:warning][:type] = warning
+              marks[line][:warning][:count] = values.size
+              marks[line][:warning][:expected] = num_expected_values
             end
 
-            multiple_marked_found = true if marks[line].size > 1
-            unmarked_group_found  = true if marks[line].empty?
+            trimmed_values(values, num_expected_values).each do |mark|
+              marks[line][:marked] << mark.value if mark.marked? && mark.value
+            end
+
+            multiple_marked_found = true if marks[line][:marked].size > 1
+            unmarked_group_found  = true if marks[line][:marked].empty?
           end
 
           result[group.label.to_sym] = marks
@@ -182,7 +197,9 @@ module RubyMarks
 
                 mark_positions = mark[:y1]-10..mark[:y1]+10
                 line += 1 unless mark_ant && mark_positions.include?(mark_ant[:y1])
-                mark[:line] = line
+
+                mark[:line] = line if line <= group.expected_lines
+
                 mark_ant = mark
               end
             end
